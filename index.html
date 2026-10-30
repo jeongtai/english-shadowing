@@ -82,6 +82,8 @@ h1{margin:0;font-family:var(--f-en);font-weight:800;font-size:clamp(1.9rem,6.4vw
 .sentence.playing .w.now{color:var(--spoken);background:var(--spoken-soft)}
 .sentence.yourturn .w{color:var(--accent)}
 .sentence.masked{cursor:pointer}
+.sentence.blanked{cursor:pointer}
+.sentence.blanked .w.gap{color:transparent;background:var(--accent-soft);border-bottom:2px dashed var(--accent);border-radius:4px 4px 0 0}
 .sentence.masked .w{color:transparent;background:var(--card2);border-radius:6px}
 .mask-hint{margin:-8px 0 0;font-size:.82rem;color:var(--muted)}
 .ko{margin:0;font-size:1.02rem;color:var(--ink2);line-height:1.6}
@@ -213,6 +215,7 @@ select{font:inherit;font-size:.84rem;border:0;background:var(--card2);color:var(
       <button class="tool" id="listen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>한 번 듣기</button>
       <button class="tool" id="slow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>천천히</button>
       <button class="tool" id="mask" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a16 16 0 0 1-2.6 3.2M6.3 7.6C4.2 9.2 3 12 3 12s4 6 9 6a8.8 8.8 0 0 0 4-1"/></svg>영어 가리기</button>
+      <button class="tool" id="blank" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 17h5M10 17h4M16 17h5"/><path d="M5 9h14"/></svg>빈칸</button>
       <button class="tool rec" id="rec" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span id="recLabel">녹음</span></button>
       <button class="tool got" id="got" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>입에 붙음</button>
     </div>
@@ -456,13 +459,16 @@ const L = [
    k:"이 흐름을 이어가죠. 다시 모여서 내년 전략을 짜면 좋겠어요.",
    n:"strategize for ~. 미팅을 마무리하면서 다음 만남을 잡는 표현입니다. keep the momentum은 뒤에 going을 붙이는 게 자연스럽습니다."}
 ];
+// 빈칸 모드에서 가릴 표현: 다음 미팅에서 다시 쓸 틀
+const B = [["From what we understand"], ["for now it's just a claim"], ["The decision we need to make is whether"], ["get buy-in"], ["de-risk it"], ["make the first move", "Is that correct?"], ["a clear next step from us"], ["ready to issue"], ["The tech is ready, but"], ["tripping me up"], ["was like"], ["on our side too", "manage expectations"], ["strategic for Korea"], ["go live at certain volumes", "amplify it"], ["commit to incentives at this phase"], ["see if he's open to", "Once the metrics are in place"], ["There needs to be a bit more utility than just"], ["a realistic next step"], ["Let me check with", "get back to you"], ["As of yesterday", "moving in the right direction"], ["alone", "half a million dollars"], ["keep the momentum going"], ["It's not 100% confirmed", "just FYI"], ["putting the most effort into"], ["alongside Ripple"], ["at the proposal stage", "right?"], ["The next step is that", "Based on that"], ["Are you referring to"], ["getting introduced to the right people"], ["I'd appreciate it if you could loop me in"], ["so far"], ["the gap we need to close", "clear the air"], ["that's a red flag"], ["push you around", "stand your ground"], ["keep them building on", "sustainable"], ["show boundaries early on"], ["a weird sense of urgency"], ["being professional about it"], ["look really bad on them"], ["Do you know if", "or is it just"], ["wants to see its stock price go up"], ["What they told us is that", "see blockchain tech as essential"], ["I wouldn't spend"], ["on the same page"], ["higher-impact", "network effects"], ["Solidify the foundation", "stacking on top of"], ["top priority"], ["aligned with", "It'd be great if"], ["workshop that"], ["If you'd like, I can"], ["counts toward", "take it slow"], ["the main blocker"], ["as soon as it's ready"], ["take place"], ["We've always had a thesis"], ["our next step is to find"], ["keep the momentum going", "strategize for"]];
+L.forEach((x, i) => { x.b = B[i] || []; });
 
 
 /* ---------- state ---------- */
 const KEY = "ripple1015-shadow";
 function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ return {}; } }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(ST)); }catch(e){} }
-const ST = Object.assign({i:0, done:{}, rate:0.9, rep:3, filter:"all", hideEn:false, auto:false, voice:""}, load());
+const ST = Object.assign({i:0, done:{}, rate:0.9, rep:3, filter:"all", hideEn:false, blank:true, auto:false, voice:""}, load());
 if(ST.i >= L.length) ST.i = 0;
 const $ = id => document.getElementById(id);
 let voices = [], runToken = 0, revealed = false, running = false;
@@ -490,6 +496,7 @@ function renderCounts(){
   document.querySelectorAll("[data-rep]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.rep === ST.rep)));
   $("auto").setAttribute("aria-checked", String(ST.auto));
   $("mask").setAttribute("aria-pressed", String(ST.hideEn));
+  $("blank").setAttribute("aria-pressed", String(ST.blank));
 }
 let WORDS = [];   // [{start,end,el}]
 function renderSentence(){
@@ -498,13 +505,18 @@ function renderSentence(){
   while((m = re.exec(it.e))){
     if(m.index > last) el.appendChild(document.createTextNode(it.e.slice(last, m.index)));
     const sp = document.createElement("span"); sp.className = "w"; sp.textContent = m[0]; el.appendChild(sp);
+    const a = m.index, z = m.index + m[0].length;
+    if(it.b.some(ph => { const k = it.e.indexOf(ph); return k >= 0 && a < k + ph.length && z > k; })) sp.classList.add("gap");
     WORDS.push({start:m.index, end:m.index + m[0].length, el:sp}); last = m.index + m[0].length;
   }
-  const masked = ST.hideEn && !revealed;
+  const masked = ST.hideEn && !revealed, blanked = ST.blank && !ST.hideEn && !revealed;
   el.classList.toggle("masked", masked);
-  el.setAttribute("aria-label", masked ? "가려진 영어 문장, 눌러서 보기" : it.e);
-  el.tabIndex = masked ? 0 : -1;
-  $("maskHint").hidden = !masked;
+  el.classList.toggle("blanked", blanked);
+  el.setAttribute("aria-label", masked ? "가려진 영어 문장, 눌러서 보기" : blanked ? "빈칸이 있는 영어 문장, 눌러서 보기" : it.e);
+  el.tabIndex = masked || blanked ? 0 : -1;
+  $("maskHint").textContent = blanked ? "빈칸에 들어갈 표현을 소리 내어 말해본 뒤, 문장을 눌러 확인하세요." : "한국어를 보고 먼저 말해본 뒤, 가린 칸을 눌러 확인하세요.";
+  $("maskHint").hidden = !(masked || blanked);
+  $("notes").hidden = blanked;
 }
 function renderStage(){
   const it = L[ST.i];
@@ -586,6 +598,7 @@ function speak(text, rate, karaoke){
     const u = new SpeechSynthesisUtterance(text);
     const v = voices.find(x => x.name === ST.voice); if(v) u.voice = v;
     u.lang = v ? v.lang : "en-US"; u.rate = rate;
+    if(karaoke && ST.blank && !ST.hideEn && !revealed){ revealed = true; renderSentence(); }
     const s = $("sentence");
     if(karaoke && !s.classList.contains("masked")){ s.classList.remove("yourturn"); s.classList.add("playing"); WORDS.forEach(w => w.el.classList.remove("past", "now")); }
     let gotBoundary = false;
@@ -651,8 +664,9 @@ function step(d){ stop(); const ord = order(), p = ord.indexOf(ST.i), n = ord[p 
 $("prev").onclick = () => step(-1);
 $("next").onclick = () => step(1);
 $("got").onclick = () => { if(ST.done[ST.i]) delete ST.done[ST.i]; else ST.done[ST.i] = 1; save(); renderCounts(); renderAgenda(); $("got").setAttribute("aria-pressed", String(!!ST.done[ST.i])); };
-$("mask").onclick = () => { ST.hideEn = !ST.hideEn; revealed = false; save(); renderCounts(); renderSentence(); };
-const reveal = () => { if(ST.hideEn && !revealed){ revealed = true; renderSentence(); } };
+$("mask").onclick = () => { ST.hideEn = !ST.hideEn; if(ST.hideEn) ST.blank = false; revealed = false; save(); renderCounts(); renderSentence(); };
+$("blank").onclick = () => { ST.blank = !ST.blank; if(ST.blank) ST.hideEn = false; revealed = false; save(); renderCounts(); renderSentence(); };
+const reveal = () => { if((ST.hideEn || ST.blank) && !revealed){ revealed = true; renderSentence(); } };
 $("sentence").onclick = reveal;
 $("sentence").onkeydown = e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); reveal(); } };
 
