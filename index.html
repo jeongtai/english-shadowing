@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Ripple 바이위클리 쉐도잉</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one focused sentence card on top (the "stage"), the full meeting script below as a scrollable cue sheet grouped by agenda. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface2:#e3e8ee; --ink:#14202b; --muted:#5a6876; --line:#cdd5de;
+  --accent:#1f4fd8; --accent-ink:#ffffff; --accent-soft:#dfe7fc;
+  --ctz:#b4531a; --ctz-soft:#fbe9dc; --rip:#1f4fd8; --rip-soft:#dfe7fc;
+  --good:#1d7a4c; --good-soft:#dbf1e4;
+  --f-display:"Bricolage Grotesque", "IBM Plex Sans KR", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151b; --surface:#17202a; --surface2:#1f2a35; --ink:#e6ecf2; --muted:#93a1af; --line:#2c3a48;
+  --accent:#7d9cff; --accent-ink:#0f151b; --accent-soft:#1e2b4d;
+  --ctz:#f0a06c; --ctz-soft:#3a2516; --rip:#8fa9ff; --rip-soft:#1e2b4d;
+  --good:#5fd09a; --good-soft:#163527; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0f151b; --surface:#17202a; --surface2:#1f2a35; --ink:#e6ecf2; --muted:#93a1af; --line:#2c3a48;
+  --accent:#7d9cff; --accent-ink:#0f151b; --accent-soft:#1e2b4d;
+  --ctz:#f0a06c; --ctz-soft:#3a2516; --rip:#8fa9ff; --rip-soft:#1e2b4d;
+  --good:#5fd09a; --good-soft:#163527; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 48px;display:grid;gap:18px}
+header{display:grid;gap:4px}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(1.6rem,5vw,2.2rem);line-height:1.15;margin:0;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:62ch}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.ctz{background:var(--ctz)} .dot.rip{background:var(--rip)}
+
+/* controls */
+.controls{background:var(--bg);padding-block:8px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lbl{font-size:.74rem;color:var(--muted);margin-right:2px;letter-spacing:.02em}
+.chip{font:inherit;font-size:.84rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:5px 11px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:focus-visible,.btn:focus-visible,.line:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select{font:inherit;font-size:.84rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:5px 8px;border-radius:8px;max-width:100%}
+.sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+
+/* stage */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:12px;min-width:0}
+.stage-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.who{font-weight:700;padding:2px 9px;border-radius:999px;font-size:.76rem}
+.who.ctz{background:var(--ctz-soft);color:var(--ctz)} .who.rip{background:var(--rip-soft);color:var(--rip)}
+.ts{font-family:var(--f-mono);font-size:.76rem}
+.pos{margin-left:auto;font-family:var(--f-mono)}
+.en{font-family:var(--f-display);font-weight:600;font-size:clamp(1.25rem,4.2vw,1.65rem);line-height:1.35;margin:0;text-wrap:pretty}
+.en.hidden-en{color:transparent;background:var(--surface2);border-radius:8px;user-select:none;cursor:pointer}
+.reveal-hint{font-size:.8rem;color:var(--muted)}
+.ko{margin:0;font-size:1rem}
+.orig{margin:0;font-size:.86rem;color:var(--muted);border-left:3px solid var(--ctz);padding-left:10px}
+.orig b{color:var(--ctz);font-weight:700;font-size:.74rem;letter-spacing:.03em;display:block}
+.tip{margin:0;font-size:.88rem;background:var(--surface2);border-radius:10px;padding:10px 12px}
+.tip b{font-size:.74rem;letter-spacing:.03em;color:var(--muted);display:block}
+.status{min-height:1.4em;font-size:.86rem;color:var(--accent);font-weight:500}
+.meter{height:4px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .1s linear}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.btn{font:inherit;font-weight:600;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:11px 6px;cursor:pointer;min-width:0}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);grid-column:span 2}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.on{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.rec-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.84rem;color:var(--muted)}
+.rec-row audio{max-width:100%;height:34px}
+.btn.rec{border-color:var(--ctz);color:var(--ctz)}
+.btn.rec.live{background:var(--ctz);color:var(--surface)}
+
+/* list */
+.sheet{display:grid;gap:22px}
+.sec h2{font-family:var(--f-display);font-weight:700;font-size:1.05rem;margin:0 0 8px;display:flex;align-items:baseline;gap:8px}
+.sec h2 .ts{color:var(--muted);font-weight:500}
+.lines{display:grid;gap:6px}
+.line{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;text-align:left;font:inherit;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--ink);min-width:0}
+.line .bar{width:3px;align-self:stretch;border-radius:3px}
+.line.ctz .bar{background:var(--ctz)} .line.rip .bar{background:var(--rip)}
+.line .txt{min-width:0}
+.line .txt span{display:block;font-size:.8rem;color:var(--muted)}
+.line .done{font-size:.72rem;font-weight:700;color:var(--good);white-space:nowrap}
+.line.cur{outline:2px solid var(--accent);outline-offset:-1px}
+.line.dim{display:none}
+.foot{font-size:.8rem;color:var(--muted);margin:0}
+@media (min-width:700px){.controls{position:sticky;top:env(safe-area-inset-top, 0px);z-index:5}}
+@media (max-width:480px){.actions{grid-template-columns:repeat(2,1fr)} .btn.primary{grid-column:span 2}}
+@media (prefers-reduced-motion: reduce){.meter i{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Catalyze × Ripple · Bi-weekly · 2026-10-15 · 35분</div>
+    <h1>Ripple 바이위클리 쉐도잉</h1>
+    <p class="lede">미팅 대화록에서 다시 써먹을 문장만 골라 다듬었습니다. 우리 쪽 문장은 실제로 한 말과 고친 문장을 같이 보여주고, Ripple 쪽 문장은 그대로 따라 할 표현입니다.</p>
+    <div class="legend"><span><i class="dot ctz"></i>우리 쪽 문장, 고쳐 말하기</span><span><i class="dot rip"></i>Ripple 원어민 표현, 그대로 따라 하기</span></div>
+  </header>
+
+  <div class="controls" role="toolbar" aria-label="연습 설정">
+    <div class="row">
+      <span class="lbl">문장</span>
+      <button class="chip" data-filter="all" aria-pressed="true">전체</button>
+      <button class="chip" data-filter="ctz" aria-pressed="false">고쳐 말하기</button>
+      <button class="chip" data-filter="rip" aria-pressed="false">원어민 표현</button>
+      <button class="chip" data-filter="todo" aria-pressed="false">아직 안 붙은 것</button>
+    </div>
+    <div class="row">
+      <span class="lbl">속도</span>
+      <button class="chip" data-rate="0.75" aria-pressed="false">0.75</button>
+      <button class="chip" data-rate="0.9" aria-pressed="true">0.9</button>
+      <button class="chip" data-rate="1" aria-pressed="false">1.0</button>
+      <span class="sep"></span>
+      <span class="lbl">반복</span>
+      <button class="chip" data-rep="1" aria-pressed="false">1</button>
+      <button class="chip" data-rep="2" aria-pressed="false">2</button>
+      <button class="chip" data-rep="3" aria-pressed="true">3</button>
+      <span class="sep"></span>
+      <button class="chip" id="hideEn" aria-pressed="false">영어 가리기</button>
+      <button class="chip" id="autoNext" aria-pressed="false">자동 다음</button>
+    </div>
+    <div class="row">
+      <label class="lbl" for="voice">목소리</label>
+      <select id="voice"><option>불러오는 중</option></select>
+    </div>
+  </div>
+
+  <section class="stage" aria-live="polite">
+    <div class="stage-top"><span class="who" id="who"></span><span class="ts" id="ts"></span><span id="secname"></span><span class="pos" id="pos"></span></div>
+    <p class="en" id="en"></p>
+    <p class="reveal-hint" id="revealHint" hidden>한국어를 보고 먼저 영어로 말해본 뒤, 가린 칸을 눌러 확인하세요.</p>
+    <p class="ko" id="ko"></p>
+    <p class="orig" id="orig" hidden><b>실제로 한 말</b><span id="origText"></span></p>
+    <p class="tip" id="tip"><b>포인트</b><span id="tipText"></span></p>
+    <div class="status" id="status" role="status"></div>
+    <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+    <div class="actions">
+      <button class="btn" id="prev" aria-label="이전 문장">이전</button>
+      <button class="btn primary" id="shadow">쉐도잉 시작</button>
+      <button class="btn" id="next" aria-label="다음 문장">다음</button>
+      <button class="btn" id="listen">한 번 듣기</button>
+      <button class="btn" id="slow">천천히</button>
+      <button class="btn" id="done">입에 붙음</button>
+      <button class="btn rec" id="rec" hidden>녹음</button>
+    </div>
+    <div class="rec-row" id="recRow" hidden><audio id="recAudio" controls></audio><span>내 녹음. 원문과 번갈아 들어보세요.</span></div>
+  </section>
+
+  <div class="sheet" id="sheet"></div>
+  <p class="foot">문장은 실제 미팅의 자동 전사본을 바탕으로 했고, 공개 페이지라 회사명·인명·수치는 가명과 예시 숫자로 바꿨습니다. 전사 오류로 의미가 불분명한 곳은 문맥으로 추정해 고쳤고, 포인트 칸에 추정이라고 적었습니다. 음성은 기기에 설치된 영어 음성(TTS)을 씁니다. 녹음 버튼은 처음 누를 때 마이크 권한을 묻습니다. 진행 표시는 이 기기 브라우저에만 저장됩니다.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+const SECS = [
+  {name:"골드라인 MOU", t:"00:48"},
+  {name:"Vaultly 실적", t:"08:42"},
+  {name:"Nova", t:"10:14"},
+  {name:"스카이하우스", t:"13:38"},
+  {name:"우선순위 정리", t:"22:49"},
+  {name:"계약과 마무리", t:"25:25"}
+];
+// w: ctz = 우리 쪽(고쳐 말하기), rip = Ripple(따라 하기)
+const L = [
+  {s:0,w:"ctz",t:"00:48",o:"So, starting with Goldline, I think we had a detailed conversation while you're in Korea with Sam, so they plan to get around 50 million by December this year through a family offices from our understanding.",
+   e:"Let's start with Goldline. We had a detailed conversation with Sam while you were in Korea. From what we understand, they plan to raise around 50 million from family offices by December.",
+   k:"골드라인부터 시작할게요. 한국에 계실 때 Sam과 자세히 얘기했죠. 저희가 이해하기로는 12월까지 패밀리오피스에서 5,000만 정도를 조달할 계획입니다.",
+   n:"한 숨에 이어 붙인 문장을 셋으로 끊고, From what we understand로 출처를 먼저 밝힙니다. "},
+  {s:0,w:"ctz",t:"01:00",o:"We haven't seen any proofs yet, so it's just a claim, but that's the direction that they're heading.",
+   e:"We haven't seen any proof yet, so for now it's just a claim. But that's the direction they're heading.",
+   k:"아직 증빙은 못 봤기 때문에 지금은 주장일 뿐입니다. 다만 그쪽이 가려는 방향은 그렇습니다.",
+   n:"proof는 셀 수 없는 명사라 any proof가 맞습니다. for now를 넣으면 확인 전이라는 뉘앙스가 분명해집니다."},
+  {s:0,w:"ctz",t:"01:10",o:"I think it's a, you know, it's a decision that we have to make, whether. It's gonna be an mou or or discussion right into the the incentive side.",
+   e:"The decision we need to make is whether to start with an MOU or go straight into the incentive discussion.",
+   k:"정해야 할 건 MOU로 시작할지, 바로 인센티브 논의로 갈지입니다.",
+   n:"The decision we need to make is whether A or B. 결정 사항을 한 문장에 담는 틀입니다. 다음 미팅에서 그대로 재사용하세요."},
+  {s:0,w:"rip",t:"01:46",e:"It's been a little bit tougher to get buy-in.",
+   k:"내부 지지를 얻기가 조금 더 어려웠어요.",
+   n:"buy-in은 내부 이해관계자의 동의와 지지입니다. get buy-in from legal처럼 씁니다."},
+  {s:0,w:"rip",t:"02:05",e:"We can de-risk it by having adoption-based milestones.",
+   k:"채택 기반 마일스톤을 두면 리스크를 줄일 수 있어요.",
+   n:"de-risk는 위험을 낮추는 구조를 만든다는 동사입니다. 조건부 지원을 제안할 때 쓰기 좋습니다."},
+  {s:0,w:"rip",t:"02:30",e:"Are they just waiting for us to make the first move, or make the first offer? Is that correct?",
+   k:"그쪽은 저희가 먼저 움직이거나 먼저 제안하길 기다리는 건가요? 맞나요?",
+   n:"상황을 질문으로 정리하고 Is that correct?로 확인합니다. 질문으로 판을 짜는 전형적인 방식입니다."},
+  {s:0,w:"ctz",t:"02:45",o:"Yeah, that's correct. There's, um, waiting for a clear next step.",
+   e:"That's correct. They're waiting for a clear next step from us.",
+   k:"맞습니다. 저희 쪽에서 명확한 다음 단계를 주길 기다리고 있어요.",
+   n:"There's waiting은 주어가 빠진 문장입니다. They're waiting으로 주어를 세우고 from us로 공을 누가 쥐었는지 밝힙니다."},
+  {s:0,w:"rip",t:"02:53",e:"Are they ready to issue the tokenized gold? Can they show it on XRPL already?",
+   k:"토큰화된 금을 발행할 준비가 됐나요? XRPL에서 이미 보여줄 수 있나요?",
+   n:"ready to issue, show it on XRPL. 진척을 확인하는 짧은 질문 두 개를 연달아 던집니다."},
+  {s:0,w:"ctz",t:"03:04",o:"So they haven't issued. Um, Logan's gold on XLP Ledgered yet... they were waiting for a clear response from Ripple, and I mean they have to take already, but they haven't officially launched anything yet.",
+   e:"They haven't issued their gold token on the XRP Ledger yet. They've been waiting for a clear response from Ripple. The tech is ready, but they haven't officially launched anything.",
+   k:"아직 XRP Ledger에 금 토큰을 발행하지 않았습니다. Ripple의 명확한 답을 기다려 왔거든요. 기술은 준비됐지만 공식 출시는 아직입니다.",
+   n:"they have to take already는 they have the tech ready로 추정해 고쳤습니다. 결론, 이유, 단서 순서로 세 문장에 나눠 말합니다."},
+  {s:0,w:"rip",t:"03:20",e:"I think that's what's kind of tripping me up.",
+   k:"그게 좀 걸리는 부분이에요.",
+   n:"trip someone up은 걸리게 하다, 헷갈리게 하다입니다. 우려를 부드럽게 꺼낼 때 씁니다."},
+  {s:0,w:"rip",t:"03:25",e:"Nova, for example, was like, \"We see it. We're gonna go.\" And they launched.",
+   k:"예를 들어 Nova는 \"보인다, 간다\" 하고 바로 출시했어요.",
+   n:"was like로 남의 태도를 생생하게 인용합니다. 구어에서 아주 자주 씁니다."},
+  {s:0,w:"ctz",t:"04:09",o:"It's very sensitive from from our Point as well, so... I, I also like to manage the expectation and also. I'm having, you know, synced with the past, um, history.",
+   e:"It's a sensitive topic on our side too. We've been talking with them for over a year, so I want to manage expectations carefully.",
+   k:"저희 쪽에서도 민감한 주제입니다. 1년 넘게 대화해 온 상대라 기대치를 신중하게 관리하고 싶어요.",
+   n:"from our point는 on our side가 자연스럽습니다. manage expectations는 복수형으로 굳어진 표현입니다. 1년 넘게는 같은 발언 앞부분에 나온 사실입니다."},
+  {s:0,w:"rip",t:"05:00",e:"I think we just have to push it and explain that this is strategic for Korea.",
+   k:"그냥 밀어붙이고 이게 한국에 전략적으로 중요하다고 설명해야 할 것 같아요.",
+   n:"전사본의 Korean strategic을 strategic for Korea로 고쳤습니다."},
+  {s:0,w:"rip",t:"05:52",e:"If they go live at certain volumes, we can make a social post about it. You can lead it, or Goldline can announce it, and RippleX can amplify it.",
+   k:"일정 거래량으로 라이브하면 SNS 게시물을 낼 수 있어요. 여러분이 주도하거나 골드라인가 발표하고, RippleX가 확산해 줄 수 있습니다.",
+   n:"go live at certain volumes, amplify. 조건과 역할 분담을 한 번에 말하는 구조입니다."},
+  {s:0,w:"rip",t:"06:14",e:"We can't really commit to incentives at this phase. But if they go live, we'll just do an MOU and see how the traction is.",
+   k:"이 단계에서 인센티브를 약속하긴 어려워요. 라이브하면 MOU부터 하고 반응을 보죠.",
+   n:"commit to ~ at this phase로 거절하고, 대안을 바로 붙입니다. 거절할 때 쓰는 틀로 그대로 외워두세요."},
+  {s:0,w:"ctz",t:"06:28",o:"We'll chat with Sam and see if he's open to announcing it first. And then, once the the metrics is in place, then we can. Restart the. But, you know? The incentive discussion.",
+   e:"I think we can take that approach. We'll talk to Sam and see if he's open to announcing it first. Once the metrics are in place, we can restart the incentive discussion.",
+   k:"그 방식으로 갈 수 있을 것 같아요. Sam에게 먼저 발표할 의향이 있는지 물어보겠습니다. 지표가 나오면 인센티브 논의를 다시 시작하면 됩니다.",
+   n:"metrics는 복수라 are입니다. once 절을 쓰면 then은 빼도 됩니다."},
+  {s:0,w:"rip",t:"06:47",e:"There needs to be a bit more utility than just tokenized value represented on chain.",
+   k:"온체인에 토큰화된 가치를 올려두는 것 이상의 쓰임새가 좀 더 있어야 해요.",
+   n:"There needs to be ~ more than just ~. 상대 제안의 빈 곳을 짚는 문장입니다."},
+  {s:0,w:"ctz",t:"07:41",o:"Yeah, I think this is a realistic next step.",
+   e:"I think this is a realistic next step.",
+   k:"현실적인 다음 단계라고 생각합니다.",
+   n:"이번 미팅에서 깔끔하게 나온 문장입니다. 고칠 곳이 없으니 그대로 입에 붙이세요."},
+  {s:0,w:"ctz",t:"07:50",o:"Um, let us get back to you after we discuss with developers.",
+   e:"Let us get back to you after we discuss it with the developers.",
+   k:"개발자들과 논의한 뒤에 다시 말씀드릴게요.",
+   n:"discuss는 목적어가 필요합니다. discuss it with ~. discuss about은 틀린 형태입니다."},
+
+  {s:1,w:"ctz",t:"08:42",o:"Next is Vaultly. Um, so as of October 14th, which is yesterday, they generated around 2.5 million. Dollars worth of transaction, so volume, so things are moving to the right direction.",
+   e:"Next is Vaultly. As of yesterday, October 14th, they've generated about 2.5 million dollars in transaction volume. Things are moving in the right direction.",
+   k:"다음은 Vaultly입니다. 어제 10월 14일 기준으로 거래량 약 250만 달러를 만들었습니다. 좋은 방향으로 가고 있어요.",
+   n:"move in the right direction이 맞고 to는 쓰지 않습니다. 숫자는 문장 끝에 한 번에 말합니다."},
+  {s:1,w:"ctz",t:"08:51",o:"And during xmp Silk. Event day. Just one day, they accumulated around 0.5 million in their Vault.",
+   e:"On the XRP Seoul event day alone, they added about 0.5 million to their vault.",
+   k:"XRP Seoul 행사 당일 하루에만 볼트에 약 50만이 쌓였습니다.",
+   n:"xmp Silk는 XRP Seoul의 전사 오류입니다. ~ alone으로 하루 만에라는 강조를 짧게 합니다."},
+  {s:1,w:"ctz",t:"09:00",o:"Um, to keep the momentum going. They're participating in the swall demo day.",
+   e:"To keep the momentum going, they're joining the demo day at Swell.",
+   k:"이 흐름을 이어가려고 Swell 데모데이에 참가합니다.",
+   n:"keep the momentum going은 그대로 좋은 표현입니다. swall은 Swell로 추정해 고쳤습니다."},
+  {s:1,w:"rip",t:"09:46",e:"It's not 100% confirmed, but Jamie is considering it, because there might be some prospects there. So, just FYI.",
+   k:"100% 확정은 아니지만 Jamie가 검토 중이에요. 거기에 잠재 고객이 있을 수 있어서요. 참고로 알려드려요.",
+   n:"확정 여부, 이유, just FYI 순서로 미확정 정보를 공유하는 틀입니다."},
+
+  {s:2,w:"ctz",t:"10:14",o:"Nova, is actually the project that we're mostly. Um. Putting our most effort in.",
+   e:"Nova is the project we're putting the most effort into right now.",
+   k:"Nova는 지금 저희가 가장 공을 들이는 프로젝트입니다.",
+   n:"mostly와 most가 겹쳤습니다. put effort into ~ 하나로 정리합니다."},
+  {s:2,w:"ctz",t:"10:30",o:"They want to be the BTC neobank alongside. Ripple so?",
+   e:"They want to become the XRP neobank, alongside Ripple.",
+   k:"Ripple과 함께 XRP 네오뱅크가 되고 싶어 합니다.",
+   n:"BTC는 뒤에서 Ripple 쪽이 XRP NeoBank라고 부른 것에 맞춰 XRP로 고쳤습니다. 발음이 비슷해 생긴 전사 오류로 추정됩니다."},
+  {s:2,w:"ctz",t:"10:45",o:"I think it's. It's at a proposal stage. And that's! You give him introductions to the the corporate deaf team.",
+   e:"Right now it's at the proposal stage. The next step is your intro to the corp dev team, right?",
+   k:"지금은 제안서 단계예요. 다음은 기업개발팀 소개를 해주시는 거죠?",
+   n:"corporate deaf는 corp dev(기업개발팀)의 전사 오류입니다. 다음 단계를 확인할 때는 right?로 끝내 질문으로 만듭니다."},
+  {s:2,w:"rip",t:"11:09",e:"The next step is that they're going to send us a proposal, and we're going to review it. Based on that, we'll set up a meeting with corp dev.",
+   k:"다음 단계는 그쪽이 제안서를 보내고 저희가 검토하는 거예요. 그걸 보고 기업개발팀과 미팅을 잡을게요.",
+   n:"The next step is that ~. Based on that, ~. 다음 단계를 순서대로 정리하는 틀입니다."},
+  {s:2,w:"ctz",t:"11:26",o:"Are you referring to a more like in-depth? Proposal specifically for court dev team. Because they've already sent the, uh, the first draft of the proposal.",
+   e:"Are you referring to a more in-depth proposal specifically for the corp dev team? They've already sent us the first draft.",
+   k:"기업개발팀용 더 상세한 제안서를 말씀하시는 건가요? 초안은 이미 받았거든요.",
+   n:"Are you referring to ~? 상대 말을 정확히 짚는 좋은 확인 질문입니다. more like는 빼면 더 단단합니다."},
+  {s:2,w:"rip",t:"12:38",e:"Let us know if they need help getting introduced to the right people.",
+   k:"적합한 사람과 연결이 필요하면 말해주세요.",
+   n:"전사본의 ensuring은 introducing으로 추정했습니다. get introduced to the right people은 BD에서 자주 씁니다."},
+  {s:2,w:"ctz",t:"12:48",o:"Once, uh, there's any progress. Um, I'd appreciate if you can also Loop me in, so I can, you know? Um, support in any way possible.",
+   e:"Once there's any progress, I'd appreciate it if you could loop me in, so I can support in any way possible.",
+   k:"진척이 생기면 저도 같이 넣어주시면 좋겠어요. 어떤 식으로든 돕겠습니다.",
+   n:"I'd appreciate it if you could ~. it과 could가 빠지기 쉽습니다. loop me in은 공유 대상에 넣어달라는 뜻입니다."},
+
+  {s:3,w:"ctz",t:"13:38",o:"Um, they've already launched their project. We've seen some volume on on main air as well... everything they have accumulated around. 120k volume.",
+   e:"Skyhaus has already launched. We've seen some volume on mainnet, and they've accumulated around 120K in volume so far.",
+   k:"스카이하우스는 이미 출시했습니다. 메인넷에서 거래량이 나오고 있고, 지금까지 약 12만 정도 쌓였습니다.",
+   n:"main air는 mainnet의 전사 오류입니다. so far를 붙여 누적 수치임을 밝힙니다."},
+  {s:3,w:"ctz",t:"14:23",o:"Since they're putting so much effort in in xrp leisure ecosystem, they they feel like they deserve more. And this is the Gap that we have to fill... clear the air. And make sure the expectation is is aligned.",
+   e:"Since they're putting so much effort into the XRPL ecosystem, they feel they deserve more. That's the gap we need to close. I'm meeting them today to clear the air and make sure expectations are aligned.",
+   k:"XRPL 생태계에 많은 노력을 들이고 있어서 더 받아야 한다고 느낍니다. 그 간극을 좁혀야 해요. 오늘 만나서 오해를 풀고 기대치를 맞추려 합니다.",
+   n:"기대치 차이에는 fill the gap보다 close the gap이 자연스럽습니다. clear the air는 오해를 푼다는 좋은 표현이라 그대로 둡니다."},
+  {s:3,w:"rip",t:"14:41",e:"Honestly, that's a red flag. It's a big red flag.",
+   k:"솔직히 그건 위험 신호예요. 아주 큰 위험 신호.",
+   n:"red flag는 경고 신호입니다. 반복해서 강조하는 리듬까지 따라 하세요."},
+  {s:3,w:"rip",t:"15:11",e:"I wouldn't let them push you around. Just stand your ground: this is what we can do, and this is where we're at.",
+   k:"끌려다니지 마세요. 우리가 할 수 있는 건 이거고, 지금 상황은 이렇다고 입장을 지키면 됩니다.",
+   n:"push someone around, stand your ground. 선을 긋는 장면에서 쓰는 짝 표현입니다."},
+  {s:3,w:"ctz",t:"15:21",o:"Yeah, it's a it's a balance, right? It's a balance of us. You know, incentivizing them to stick on xrp Ledger, so it's we just have to find a way to? To support them in a in a more reasonable way.",
+   e:"It's a balance. We want to incentivize them to stay on the XRP Ledger, so we need to find a more reasonable way to support them.",
+   k:"균형의 문제예요. XRP Ledger에 계속 남도록 동기를 줘야 하니, 더 합리적인 지원 방식을 찾아야 합니다.",
+   n:"stick on은 stay on 또는 stick with가 맞습니다. 반복된 a in a를 정리했습니다."},
+  {s:3,w:"rip",t:"16:56",e:"It's good to show boundaries early on, so they don't get into those dynamics.",
+   k:"초반에 선을 보여주는 게 좋아요. 그래야 그런 관계로 흘러가지 않죠.",
+   n:"show boundaries early on. 파트너 관리에서 자주 듣는 표현입니다."},
+  {s:3,w:"rip",t:"18:14",e:"If there's a company that has a weird sense of urgency, there's usually something hidden behind that.",
+   k:"이상하게 급한 회사가 있으면 보통 그 뒤에 뭔가 숨어 있어요.",
+   n:"a sense of urgency는 긴박감입니다. 경험에서 나온 일반론을 usually로 말하는 방식입니다."},
+  {s:3,w:"rip",t:"18:40",e:"I think being professional about it and having boundaries would be the good next step for Skyhaus.",
+   k:"스카이하우스 건은 프로답게 대하고 선을 지키는 게 좋은 다음 단계일 것 같아요.",
+   n:"동명사 두 개를 주어로 묶어 권고를 정리합니다."},
+  {s:3,w:"rip",t:"19:20",e:"If they can't answer that, it's just going to look really bad on them.",
+   k:"그걸 답하지 못하면 그쪽 이미지가 정말 안 좋아질 거예요.",
+   n:"look bad on someone. 누군가에게 불리하게 보인다는 구어 표현입니다."},
+  {s:3,w:"ctz",t:"20:01",o:"Do you know if this, uh, this opportunity involves any, um, sponsorship, or is this something like something to include? A project into that.",
+   e:"Do you know if this opportunity involves any sponsorship, or is it just a slot for projects to join?",
+   k:"이 기회에 스폰서십이 필요한가요, 아니면 프로젝트가 참여할 자리만 있는 건가요?",
+   n:"질문을 두 갈래 선택지로 정리하면 상대가 답하기 쉽습니다. 이번 미팅에서 질문을 던진 좋은 장면입니다."},
+  {s:3,w:"ctz",t:"20:59",o:"I think in nature. All the listing companies wants to have a good impact on their stock price. But that's not something that they told us explicitly, so I don't think that's the ultimate goal here.",
+   e:"By nature, every listed company wants a positive impact on its stock price. But they never told us that explicitly, so I don't think it's their ultimate goal.",
+   k:"상장사라면 본래 주가에 좋은 영향을 원하죠. 하지만 명시적으로 말한 적은 없어서 그게 최종 목표라고 보진 않습니다.",
+   n:"listing companies는 listed companies가 맞습니다. All ~ wants는 수일치가 틀려 every ~ wants로 바꿨습니다."},
+  {s:3,w:"ctz",t:"21:10",o:"So, what they mentioned was, they wanted to expand the. A business outside of Korea, and they saw that. Um, you know, blockchain Tech would be. Essential for them to, you know, for essentially for the expansion.",
+   e:"What they told us is that they want to expand their business outside of Korea, and they see blockchain tech as essential for that.",
+   k:"그쪽이 말한 건 해외로 사업을 넓히고 싶고, 그러려면 블록체인 기술이 필수라고 본다는 겁니다.",
+   n:"see A as B로 판단을 한 문장에 담습니다. What they told us is that ~은 남의 말을 전할 때 쓰는 틀입니다."},
+
+  {s:4,w:"rip",t:"23:40",e:"I wouldn't spend too much time with them.",
+   k:"그쪽에 시간을 너무 쓰진 않겠어요.",
+   n:"I wouldn't ~. 직접 지시하지 않고 권고하는 정중한 방식입니다."},
+  {s:4,w:"ctz",t:"23:46",o:"Yeah, we're on the same page.",
+   e:"Yeah, we're on the same page.",
+   k:"네, 저희도 같은 생각입니다.",
+   n:"잘 나온 문장입니다. Yeah 대신 맞장구로 쓰면 좋습니다."},
+  {s:4,w:"rip",t:"24:11",e:"Focus on the higher-impact ones, like Vaultly and Nova. How can we create more network effects with them?",
+   k:"Vaultly나 Nova처럼 파급력 큰 곳에 집중하세요. 그쪽과 어떻게 네트워크 효과를 더 만들 수 있을까요?",
+   n:"권고 다음에 바로 질문을 붙여 상대가 생각하게 만듭니다."},
+  {s:4,w:"rip",t:"24:22",e:"Solidify the foundation, so we can keep stacking on top of those two.",
+   k:"기반을 다져서 그 둘 위에 계속 쌓아 올리죠.",
+   n:"solidify the foundation, stack on top of. 전략 얘기에서 자주 쓰는 비유입니다."},
+  {s:4,w:"ctz",t:"24:28",o:"Yeah, but for now, Nova is definitely our key priority. And then, um, and then it's Goldline and then Vaultly, and then the rest.",
+   e:"For now, Nova is definitely our top priority. Then Goldline, then Vaultly, and then the rest.",
+   k:"지금은 Nova가 확실히 최우선이고, 다음이 골드라인, Vaultly, 나머지 순입니다.",
+   n:"우선순위는 Then으로 끊어서 짧게 나열합니다."},
+
+  {s:5,w:"ctz",t:"26:40",o:"The the scope of work, and you know, kpi and everything should be also aligned with, um, report engagement. So, it'll be great if we can kind of. Of all three of us get involved on the on the Contracting and all the scope side.",
+   e:"The scope of work and KPIs should also be aligned with our reporting. It'd be great if all three of us could be involved in the contract and scope discussion.",
+   k:"업무 범위와 KPI도 보고 체계와 맞춰야 합니다. 계약과 범위 논의에 셋이 같이 참여하면 좋겠어요.",
+   n:"report engagement는 의미가 불분명해 our reporting으로 추정했습니다. It'd be great if ~ could ~는 부담 없이 요청하는 틀입니다."},
+  {s:5,w:"rip",t:"26:56",e:"We can set up another meeting separately to workshop that.",
+   k:"그건 따로 미팅을 잡아서 같이 다듬어 보죠.",
+   n:"workshop이 동사로 쓰였습니다. 함께 머리를 맞대 다듬는다는 뜻입니다."},
+  {s:5,w:"ctz",t:"27:08",o:"We have a whole report that we shared with the events team. Uh, if you'd like to look into it, I can also share it with you as well.",
+   e:"We have a full report that we shared with the events team. If you'd like, I can share it with you too.",
+   k:"이벤트팀에 공유한 전체 보고서가 있어요. 원하시면 보내드릴게요.",
+   n:"also와 as well이 겹쳤습니다. 하나만 씁니다. If you'd like, I can ~은 제안할 때 쓰는 기본 틀입니다."},
+  {s:5,w:"rip",t:"27:37",e:"Let's see if we can get them live this year, so it counts toward Catalyze's go-lives for this year. But on incentives, I think we should take it slow.",
+   k:"올해 안에 라이브시켜서 올해 Catalyze 성과로 잡히게 해보죠. 다만 인센티브는 천천히 가는 게 좋겠어요.",
+   n:"count toward ~는 실적에 포함된다는 뜻입니다. take it slow로 속도를 조절합니다."},
+  {s:5,w:"rip",t:"29:22",e:"Why can't they just do it? What's the main blocker?",
+   k:"왜 그냥 못 하죠? 가장 큰 걸림돌이 뭔가요?",
+   n:"main blocker는 진행을 막는 핵심 원인입니다. 파트너 상황을 캐물을 때 가장 먼저 쓸 질문입니다."},
+  {s:5,w:"ctz",t:"31:05",o:"Yeah. We're working on it right now, and we'll get that done by by next week. So at the earliest, I'll I'll send it over by next week.",
+   e:"We're working on it now, and we'll have it done next week. I'll send it over as soon as it's ready.",
+   k:"지금 작업 중이고 다음 주에 끝납니다. 준비되는 대로 보내드릴게요.",
+   n:"at the earliest와 by next week를 같이 쓰면 빨라야 다음 주인지 늦어도 다음 주인지 헷갈립니다. 약속은 as soon as it's ready로 정리합니다."},
+  {s:5,w:"rip",t:"31:54",e:"I think this was the year we saw ecosystem network effects actually take place.",
+   k:"올해는 생태계 네트워크 효과가 실제로 나타난 해였던 것 같아요.",
+   n:"see A take place. 지각동사 뒤에 동사원형을 씁니다."},
+  {s:5,w:"ctz",t:"33:42",o:"We always had a thesis where, if there's any, if there's a clear Champion project within the ecosystem developer, developers will follow.",
+   e:"We've always had a thesis: if there's a clear champion project in the ecosystem, developers will follow.",
+   k:"저희는 늘 이런 가설이 있었습니다. 생태계에 확실한 대표 프로젝트가 있으면 개발자는 따라온다.",
+   n:"have always had로 시제를 맞추고, where 대신 콜론으로 가설을 바로 말합니다."},
+  {s:5,w:"ctz",t:"34:10",o:"So our next step would be finding, um, you know. One to three projects that actually represent the whole ecosystem. And I think, um, Nova has a good chance, so I'm very excited.",
+   e:"So our next step is to find one to three projects that really represent the whole ecosystem. I think Nova has a good chance, so I'm very excited.",
+   k:"그래서 다음 단계는 생태계 전체를 대표할 프로젝트 한두세 개를 찾는 겁니다. Nova가 가능성이 커서 기대가 큽니다.",
+   n:"원문도 거의 맞습니다. would be finding보다 is to find가 더 단호하게 들립니다."},
+  {s:5,w:"rip",t:"34:50",e:"Let's keep the momentum. I think we should get back together and strategize for next year.",
+   k:"이 흐름을 이어가죠. 다시 모여서 내년 전략을 짜면 좋겠어요.",
+   n:"strategize for ~. 미팅을 마무리하면서 다음 만남을 잡는 표현입니다."}
+];
+
+/* ---------- state ---------- */
+const KEY = "ripple1015-shadow";
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ return {}; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(ST)); }catch(e){} }
+const ST = Object.assign({i:0, done:{}, rate:0.9, rep:3, filter:"all", hideEn:false, auto:false, voice:""}, load());
+const $ = id => document.getElementById(id);
+let voices = [], runToken = 0, revealed = false;
+
+/* ---------- list ---------- */
+function visible(idx){
+  const it = L[idx];
+  if(ST.filter === "ctz" || ST.filter === "rip") return it.w === ST.filter;
+  if(ST.filter === "todo") return !ST.done[idx];
+  return true;
+}
+function renderSheet(){
+  const sheet = $("sheet"); sheet.textContent = "";
+  SECS.forEach((sec, si) => {
+    const box = document.createElement("section"); box.className = "sec";
+    const h = document.createElement("h2"); h.textContent = sec.name;
+    const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = sec.t; h.appendChild(ts);
+    const lines = document.createElement("div"); lines.className = "lines";
+    L.forEach((it, idx) => {
+      if(it.s !== si) return;
+      const b = document.createElement("button");
+      b.className = "line " + it.w + (idx === ST.i ? " cur" : "") + (visible(idx) ? "" : " dim");
+      b.dataset.idx = idx;
+      const bar = document.createElement("i"); bar.className = "bar";
+      const txt = document.createElement("div"); txt.className = "txt";
+      txt.append(document.createTextNode(it.e));
+      const k = document.createElement("span"); k.textContent = it.t + " · " + it.k; txt.appendChild(k);
+      const d = document.createElement("span"); d.className = "done"; d.textContent = ST.done[idx] ? "입에 붙음" : "";
+      b.append(bar, txt, d);
+      b.onclick = () => { stop(); go(idx); window.scrollTo({top:0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"}); };
+      lines.appendChild(b);
+    });
+    box.append(h, lines);
+    const any = L.some((it, idx) => it.s === si && visible(idx));
+    box.hidden = !any;
+    sheet.appendChild(box);
+  });
+}
+
+/* ---------- stage ---------- */
+function order(){ return L.map((_, i) => i).filter(visible); }
+function go(idx){
+  ST.i = idx; revealed = false; save(); renderStage(); renderSheet();
+}
+function renderStage(){
+  const it = L[ST.i];
+  const who = $("who"); who.className = "who " + it.w; who.textContent = it.w === "ctz" ? "우리 쪽 · 고쳐 말하기" : "Ripple · 따라 하기";
+  $("ts").textContent = it.t; $("secname").textContent = SECS[it.s].name;
+  const ord = order(); const p = ord.indexOf(ST.i);
+  $("pos").textContent = (p < 0 ? "-" : (p + 1)) + " / " + ord.length;
+  const en = $("en"); en.textContent = it.e;
+  const hide = ST.hideEn && !revealed;
+  en.classList.toggle("hidden-en", hide); en.setAttribute("aria-label", hide ? "가려진 영어 문장, 눌러서 보기" : it.e);
+  en.tabIndex = hide ? 0 : -1;
+  $("revealHint").hidden = !hide;
+  $("ko").textContent = it.k;
+  $("orig").hidden = !it.o; $("origText").textContent = it.o || "";
+  $("tipText").textContent = it.n;
+  const done = $("done"); done.classList.toggle("on", !!ST.done[ST.i]); done.textContent = ST.done[ST.i] ? "입에 붙음 ✓" : "입에 붙음";
+  $("prev").disabled = p <= 0; $("next").disabled = p < 0 || p >= ord.length - 1;
+  $("status").textContent = ""; $("meter").style.width = "0";
+  $("recRow").hidden = true;
+}
+$("en").onclick = () => { if(ST.hideEn && !revealed){ revealed = true; renderStage(); } };
+$("en").onkeydown = e => { if((e.key === "Enter" || e.key === " ") && ST.hideEn && !revealed){ e.preventDefault(); revealed = true; renderStage(); } };
+
+/* ---------- speech ---------- */
+const synth = window.speechSynthesis;
+function loadVoices(){
+  if(!synth) return;
+  voices = synth.getVoices().filter(v => /^en[-_]/i.test(v.lang));
+  const sel = $("voice"); sel.textContent = "";
+  if(!voices.length){ const o = document.createElement("option"); o.textContent = "영어 음성을 찾지 못했습니다"; sel.appendChild(o); return; }
+  const rank = v => (/en[-_]US/i.test(v.lang) ? 0 : 2) + (/Samantha|Google US English|Aria|Jenny|Ava|Allison/i.test(v.name) ? 0 : 1);
+  voices.sort((a, b) => rank(a) - rank(b));
+  voices.forEach(v => { const o = document.createElement("option"); o.value = v.name; o.textContent = v.name + " · " + v.lang; sel.appendChild(o); });
+  if(ST.voice && voices.some(v => v.name === ST.voice)) sel.value = ST.voice; else ST.voice = voices[0].name;
+}
+if(synth){ loadVoices(); synth.onvoiceschanged = loadVoices; }
+else { $("voice").innerHTML = "<option>이 브라우저는 음성 읽기를 지원하지 않습니다</option>"; }
+$("voice").onchange = e => { ST.voice = e.target.value; save(); };
+
+function speak(text, rate){
+  return new Promise(res => {
+    if(!synth){ res(0); return; }
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = voices.find(x => x.name === ST.voice); if(v) u.voice = v;
+    u.lang = v ? v.lang : "en-US"; u.rate = rate;
+    const t0 = performance.now(); let settled = false;
+    const end = () => { if(settled) return; settled = true; res(performance.now() - t0); };
+    u.onend = end; u.onerror = end;
+    // 일부 브라우저에서 onend 가 오지 않을 때를 대비한 안전장치
+    const words = text.split(/\s+/).length;
+    setTimeout(end, (words * 0.55 / rate + 3) * 1000);
+    synth.speak(u);
+  });
+}
+function wait(ms, token, label){
+  return new Promise(res => {
+    const t0 = performance.now(), m = $("meter");
+    function tick(){
+      if(token !== runToken){ m.style.width = "0"; res(false); return; }
+      const p = Math.min(1, (performance.now() - t0) / ms);
+      m.style.width = (p * 100) + "%";
+      const left = Math.ceil((ms - (performance.now() - t0)) / 1000);
+      $("status").textContent = label + (left > 0 ? " · " + left + "초" : "");
+      if(p < 1) requestAnimationFrame(tick); else { m.style.width = "0"; res(true); }
+    }
+    tick();
+  });
+}
+function stop(){ runToken++; if(synth) synth.cancel(); $("shadow").textContent = "쉐도잉 시작"; $("status").textContent = ""; $("meter").style.width = "0"; }
+
+async function shadow(){
+  if($("shadow").dataset.running === "1"){ stop(); $("shadow").dataset.running = "0"; return; }
+  const token = ++runToken; $("shadow").dataset.running = "1"; $("shadow").textContent = "멈추기";
+  try{
+    while(token === runToken){
+      const it = L[ST.i];
+      for(let r = 1; r <= ST.rep; r++){
+        if(token !== runToken) return;
+        $("status").textContent = "듣기 " + r + " / " + ST.rep;
+        const dur = await speak(it.e, ST.rate);
+        if(token !== runToken) return;
+        const gap = Math.max(2500, Math.min(dur * 1.25 + 800, 16000));
+        const ok = await wait(gap, token, "따라 말하세요 " + r + " / " + ST.rep);
+        if(!ok) return;
+      }
+      if(!ST.auto) break;
+      const ord = order(), p = ord.indexOf(ST.i);
+      if(p < 0 || p >= ord.length - 1) break;
+      go(ord[p + 1]);
+      await wait(900, token, "다음 문장");
+    }
+    if(token === runToken) $("status").textContent = "끝났습니다. 입에 붙었으면 표시해 두세요.";
+  } finally {
+    if(token === runToken){ $("shadow").dataset.running = "0"; $("shadow").textContent = "쉐도잉 시작"; }
+  }
+}
+$("shadow").onclick = shadow;
+$("listen").onclick = async () => { stop(); $("status").textContent = "듣는 중"; await speak(L[ST.i].e, ST.rate); $("status").textContent = ""; };
+$("slow").onclick = async () => { stop(); $("status").textContent = "0.6배속으로 듣는 중"; await speak(L[ST.i].e, 0.6); $("status").textContent = ""; };
+function step(d){ stop(); const ord = order(), p = ord.indexOf(ST.i); const n = ord[p + d]; if(n !== undefined) go(n); }
+$("prev").onclick = () => step(-1);
+$("next").onclick = () => step(1);
+$("done").onclick = () => { if(ST.done[ST.i]) delete ST.done[ST.i]; else ST.done[ST.i] = 1; save(); renderStage(); renderSheet(); };
+
+/* ---------- controls ---------- */
+function syncChips(){
+  document.querySelectorAll("[data-filter]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.filter === ST.filter)));
+  document.querySelectorAll("[data-rate]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.rate === ST.rate)));
+  document.querySelectorAll("[data-rep]").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.rep === ST.rep)));
+  $("hideEn").setAttribute("aria-pressed", String(ST.hideEn));
+  $("autoNext").setAttribute("aria-pressed", String(ST.auto));
+}
+document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => {
+  ST.filter = b.dataset.filter; stop();
+  const ord = order(); if(ord.length && !ord.includes(ST.i)) ST.i = ord[0];
+  save(); syncChips(); renderStage(); renderSheet();
+});
+document.querySelectorAll("[data-rate]").forEach(b => b.onclick = () => { ST.rate = +b.dataset.rate; save(); syncChips(); });
+document.querySelectorAll("[data-rep]").forEach(b => b.onclick = () => { ST.rep = +b.dataset.rep; save(); syncChips(); });
+$("hideEn").onclick = () => { ST.hideEn = !ST.hideEn; revealed = false; save(); syncChips(); renderStage(); };
+$("autoNext").onclick = () => { ST.auto = !ST.auto; save(); syncChips(); };
+
+/* ---------- recording (https 또는 로컬 파일에서 마이크 사용) ---------- */
+let rec = null, chunks = [], recURL = "";
+(async () => {
+  if(!navigator.mediaDevices || !window.MediaRecorder) return;
+  if(!window.isSecureContext && location.protocol !== "file:") return;
+  $("rec").hidden = false;
+})();
+$("rec").onclick = async () => {
+  const btn = $("rec");
+  if(rec && rec.state === "recording"){ rec.stop(); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks = []; rec = new MediaRecorder(stream);
+    rec.ondataavailable = e => chunks.push(e.data);
+    rec.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      if(recURL) URL.revokeObjectURL(recURL);
+      recURL = URL.createObjectURL(new Blob(chunks, {type: rec.mimeType}));
+      $("recAudio").src = recURL; $("recRow").hidden = false;
+      btn.classList.remove("live"); btn.textContent = "녹음";
+    };
+    rec.start(); btn.classList.add("live"); btn.textContent = "녹음 멈추기";
+  }catch(e){
+    btn.hidden = true; $("status").textContent = "마이크를 쓸 수 없습니다. 휴대폰 음성 메모로 녹음해 비교하세요.";
+  }
+};
+
+/* ---------- keyboard ---------- */
+document.addEventListener("keydown", e => {
+  if(e.target.matches("select, input")) return;
+  if(e.key === "ArrowRight"){ e.preventDefault(); step(1); }
+  else if(e.key === "ArrowLeft"){ e.preventDefault(); step(-1); }
+  else if(e.key === " " && !e.target.matches("button")){ e.preventDefault(); shadow(); }
+});
+
+if(ST.i >= L.length) ST.i = 0;
+syncChips(); renderStage(); renderSheet();
+})();
+</script>
+
+</body>
+</html>
